@@ -2,12 +2,11 @@
 
 ### Repository Content
 
-```bash
-|-- code
-|   |-- simulation.R
-|   |-- random_forest.R
-|   |-- analysis.R
-
+```
+├── code
+│   ├── simulation.R
+│   ├── random_forest.R
+│   ├── analysis.R
 ```
 
 ### TODO:
