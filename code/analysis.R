@@ -1,6 +1,6 @@
 source("code/simulation.R")
 source("code/random_forest.R")
-data = simulate()
+data = simulate(scenario ="spatio-temporal")
 
 ### Transform data ###
 # TODO create function for the following chunk!

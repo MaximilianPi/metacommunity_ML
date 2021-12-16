@@ -13,9 +13,9 @@
 
 Implement different scenarios in the simulation function:
 
-- [x] temporal
-- [ ] spatial
-- [ ] spatio-temporal
+- [x] temporal          # must be checked
+- [x] spatial           # must be checked
+- [x] spatio-temporal   # must be checked
 
 ML/RF approach:
 
