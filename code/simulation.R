@@ -5,20 +5,29 @@
 #' @param E number of environmental factors
 #' @param time number of time points
 #' @param scenario which scenario
+#' @param upperA upper boundary of A entries
+#' @param diagA diagonal values for interactions within species
 #' 
 #' @details 
 #' 
 #' Simple MAR models to generate benchmark data for the ML approach
 #' 
 
-simulate  = function(N = 100, SP = 5, E = 3, time = 100, scenario = c("temporal", "spatial", "spatio-temporal")) {
+simulate  = function(N = 100, 
+                     SP = 5, 
+                     E = 3, 
+                     time = 100, 
+                     scenario = c("temporal", "spatial", "spatio-temporal"), 
+                     upperA = 0.5,
+                     diagA = 0.0
+                     ) {
   
   scenario = match.arg(scenario)
   
   # Interaction Matrix
-  A = matrix(runif(SP*SP, -0.5, 0.5), SP, SP)
+  A = matrix(runif(SP*SP, 0.0, upperA), SP, SP)
   W = matrix(rnorm(SP*E), E, SP)
-  diag(A) = 1.0
+  diag(A) = diagA
   
   if(scenario == "temporal") {
     # one plot? I think we agreed on this, right?
@@ -45,7 +54,7 @@ simulate  = function(N = 100, SP = 5, E = 3, time = 100, scenario = c("temporal"
      Xs = vector("list", time)
      comms[[1]] = Y
      Xs[[1]] = X
-     for(i in 2:t) {
+     for(i in 2:time) {
        comms[[i]] =  sample_f( comms[[i-1]]%*%A + X%*% W  )
        Xs[[i]] = X
      }
