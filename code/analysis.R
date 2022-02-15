@@ -9,6 +9,7 @@ prepared_data = prepare_data(data, lag = 1)
 
 X = scale(prepared_data$X)
 X[,1:3] = prepared_data$X[,1:3]
+X[,4:8] = apply(prepared_data$X[,4:8], 2, function(x) (x+min(x))/(max(x+min(x))))
 Y = round(prepared_data$Y)
 
 ### sjSDM ###
@@ -26,11 +27,11 @@ cor(abs(as.vector(results_RF2$W)), abs(as.vector(t(data$W))), method = "spearman
 
 ### BRT ###
 results_BRT = community_BRT(X, Y, 3, response = "count")
-cor(abs(as.vector(results_BRT$A)), as.vector(data$A), method = "spearman")
+cor(abs(as.vector(results_BRT$A)), as.vector(t(data$A)), method = "spearman")
 cor(abs(as.vector(results_BRT$W)), abs(as.vector(t(data$W))), method = "spearman")
 
 
 ### BRT 2 ###
-results_BRT = community_BRT_xg(X, Y, 3, response = "count")
-cor(abs(as.vector(results_BRT$A)), as.vector(data$A), method = "spearman")
+results_BRT = community_BRT_xg(X, Y, 3, response = "count", correct = FALSE)
+cor(abs(as.vector(results_BRT$A)), as.vector(t(data$A)), method = "spearman")
 cor(abs(as.vector(results_BRT$W)), abs(as.vector(t(data$W))), method = "spearman")

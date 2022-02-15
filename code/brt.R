@@ -63,29 +63,51 @@ community_BRT = function(XX, YY, E = 3, response = "binomial", ...) {
 #' @param impurity which impurity
 #'
 #' @import ranger
-community_BRT_xg = function(XX, YY, E = 3, response = "binomial",...) {
+community_BRT_xg = function(XX, YY, E = 3, response = "binomial", correct=FALSE,...) {
   SP = ncol(YY)
-  models = null = preds = vector("list", SP)
+  models = preds = vector("list", SP)
   dist = ifelse(response == "binomial", "binary:logistic", "count:poisson" )
+  
   for(i in 1:SP) {
-    df = data.frame(XX, Y_target = YY[,i,drop=FALSE])
-    df = xgboost::xgb.DMatrix(XX, label = YY[,i,drop=FALSE])
-    models[[i]]  = xgboost::xgboost(df, nrounds = 100, objective = dist, max_depth = 3, early_stopping_rounds = 1)
+    #df = data.frame(XX, Y_target = YY[,i,drop=FALSE])
+    if(correct) {
+      N = matrix(rnorm(nrow(XX)), ncol = 1L)
+      colnames(N) = "AA"
+      XX2 = cbind(N, XX)
+      df = xgboost::xgb.DMatrix(XX2, label = YY[,i,drop=FALSE])
+    } else {
+      df = xgboost::xgb.DMatrix(XX, label = YY[,i,drop=FALSE])
+    }
+    models[[i]]  = xgboost::xgboost(df, nrounds = 20, objective = dist, max_depth = 5, early_stopping_rounds = 1)
     preds[[i]] = predict(models[[i]], df) # return probabilities for class 1
 
   }
 
   ## naive ###
   # biotic importance matrix
+
   A = matrix(NA, SP, SP)
   for(i in 1:SP) {
     imps = xgboost::xgb.importance(model = models[[i]])
-    importances = imps$Gain
+    importances = imps$Frequency
     names(importances) = imps$Feature
     imps = importances[order(names(importances))]
-    A[i, ] = imps[(E+1):length(importances)]
+    if(correct) {
+      imps = (imps-imps[1])[-1]
+      nns = colnames(df)[-1]
+    } else {
+      nns = colnames(df)
+    }
+    all_in = (nns %in% names(imps))
+    if(any(!all_in)){
+      fill = rep(0, length(nns[!all_in]))
+      names(fill) = nns[!all_in]
+      imps = c(imps, fill)
+    }
+    imps = imps[order(names(imps))]
+    A[i, ] = imps[(E+1):length(imps)] - 1/9
   }
-
+  
   # spatial importance matrix
   W = matrix(NA, SP, E)
   for(i in 1:SP) {
@@ -93,6 +115,7 @@ community_BRT_xg = function(XX, YY, E = 3, response = "binomial",...) {
     importances = imps$Gain
     names(importances) = imps$Feature
     imps = importances[order(names(importances))]
+    if(correct) imps = (imps-imps[1])[-1]
     W[i, ] = imps[1:E]
   }
 
