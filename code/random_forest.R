@@ -1,4 +1,5 @@
 library(ranger)
+library(xgboost)
 
 #' Community Random Forest 
 #' 
@@ -6,35 +7,42 @@ library(ranger)
 #' @param YY N*SP species occurrence matrix
 #' @param E number of environmental predictors (without intercept)
 #' @param impurity which impurity
+#' @param response poisson or binomial
 #' 
 #' @import ranger
-community_RF = function(XX, YY, E = 3, impurity = "impurity") {
+community_RF = function(XX, YY, E = 3, impurity = "impurity", response = "binomial") {
   SP = ncol(YY)
   models = null = preds = vector("list", SP)
-  XX_n = apply(XX, 2, sample)
-  YY_n = apply(YY, 2, sample)
+
+  x_data = cbind(rnorm(nrow(XX)), XX)
   for(i in 1:SP) {
-    models[[i]] = ranger(x = cbind(1, XX), y = YY[,i,drop=FALSE], 
-                         importance = impurity, probability = TRUE)
+    models[[i]] = ranger(x = x_data, y = YY[,i,drop=FALSE], 
+                         importance = impurity, 
+                         probability = ifelse(response == "binomial", TRUE, FALSE), 
+                         classification = ifelse(response == "binomial", TRUE, FALSE))
     
-    preds[[i]] = predict(models[[i]], data = cbind(1, XX))$predictions[,1] # return probabilities for class 1
-    
-    # maybe useful?
-    null[[i]]   = ranger(x = cbind(1, XX_n), y = YY_n[,i,drop=FALSE], 
-                         importance = impurity, probability = TRUE)
+    if(response == "binomial") {
+      preds[[i]] = predict(models[[i]], data = x_data)$predictions[,1] # return probabilities for class 1
+    } else {
+      
+    preds[[i]] = predict(models[[i]], data = x_data)$predictions
+    }
+
   }
   
   ## naive ###
   # biotic importance matrix
   A = matrix(NA, SP, SP)
   for(i in 1:SP) {
-    A[i, ] = models[[i]]$variable.importance[(E+2):length(models[[i]]$variable.importance)] 
+    imp = (models[[i]]$variable.importance-models[[i]]$variable.importance[1])[-1]
+    A[i, ] = imp[(E+1):length(imp)] 
   }
   
   # spatial importance matrix
-  W = matrix(NA, SP, E+1)
+  W = matrix(NA, SP, E)
   for(i in 1:SP) {
-    W[i, ] = models[[i]]$variable.importance[1:(E+1)] 
+    imp = (models[[i]]$variable.importance-models[[i]]$variable.importance[1])[-1]
+    W[i, ] = imp[1:(E)] 
   }
   
   # species-species association matrix
@@ -43,8 +51,8 @@ community_RF = function(XX, YY, E = 3, impurity = "impurity") {
   
   
   result = list(models = models, 
-                A_impurity_corrected = A, 
-                W_impurity_corrected = W, 
+                A = A, 
+                W = W, 
                 null = null, 
                 Sigma = Sigma, 
                 Pred = preds)
@@ -52,7 +60,7 @@ community_RF = function(XX, YY, E = 3, impurity = "impurity") {
   
   return(result)
 }
-coef.community_rf = function(object, ...) object$W_impurity_corrected
+coef.community_rf = function(object, ...) object$W
 
 predict.community_rf = function(object, data, ...) {
   preds = list()
@@ -61,4 +69,3 @@ predict.community_rf = function(object, data, ...) {
   }
   return(do.call(cbind, preds))
 }
-
