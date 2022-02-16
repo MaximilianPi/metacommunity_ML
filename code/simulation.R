@@ -20,15 +20,18 @@ simulate  = function(N = 100,
                      scenario = c("temporal", "spatial", "spatio-temporal"), 
                      upperA = 0.5,
                      diagA = 0.0,
-                     count = FALSE
+                     count = FALSE, 
+                     A = NULL
                      ) {
   
   scenario = match.arg(scenario)
   
   # Interaction Matrix
-  A = matrix(runif(SP*SP, 0.0, upperA), SP, SP)
-  W = matrix(rnorm(SP*E), E, SP)
-  diag(A) = diagA
+  if(is.null(A)) {
+    A = matrix(runif(SP*SP, 0.0, upperA), SP, SP)
+    W = matrix(rnorm(SP*E), E, SP)
+    diag(A) = diagA
+  }
   
   if(!count) {
     link = function(V) 1/(1+exp(-V))
@@ -93,7 +96,7 @@ simulate  = function(N = 100,
 
 
 
-prepare_data = function(data, lag = 1) {
+prepare_data = function(data, lag = 1, scale_d=TRUE) {
   time_steps = length(data$X)
   sites = nrow(data$X[[1]])
   XX = do.call(rbind, data$X)
@@ -103,5 +106,7 @@ prepare_data = function(data, lag = 1) {
   colnames(X_corrected) = c(paste0("E_", 1:ncol(XX)), paste0("Y_", 1:ncol(YY)))
   YY = YY[-lag_indices,]
   XX = X_corrected
-  return(list(X = XX, Y = YY))
+  if(scale_d) XX = scale(XX)
+  XX = cbind(XX[,1:ncol(data$X[[1]])], apply(XX[,(ncol(data$X[[1]])+1):ncol(XX)], 2, function(x) (x+min(x))/(max(x+min(x)))))
+  return(list(X = XX, Y = round(YY)))
 }

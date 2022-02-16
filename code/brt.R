@@ -45,7 +45,6 @@ community_BRT = function(XX, YY, E = 3, response = "binomial", ...) {
   result = list(models = models, 
                 A = A, 
                 W = W, 
-                null = null, 
                 Sigma = Sigma, 
                 Pred = preds)
   class(result) = c("community_brt")
@@ -61,6 +60,7 @@ community_BRT = function(XX, YY, E = 3, response = "binomial", ...) {
 #' @param YY N*SP species occurrence matrix
 #' @param E number of environmental predictors (without intercept)
 #' @param impurity which impurity
+#' @param correct correct feature importances or not
 #'
 #' @import ranger
 community_BRT_xg = function(XX, YY, E = 3, response = "binomial", correct=FALSE,...) {
@@ -87,11 +87,12 @@ community_BRT_xg = function(XX, YY, E = 3, response = "binomial", correct=FALSE,
   # biotic importance matrix
 
   A = matrix(NA, SP, SP)
+  W = matrix(NA, SP, E)
   for(i in 1:SP) {
     imps = xgboost::xgb.importance(model = models[[i]])
-    importances = imps$Frequency
+    importances = imps$Gain
     names(importances) = imps$Feature
-    imps = importances[order(names(importances))]
+    imps = importances[colnames(XX)]
     if(correct) {
       imps = (imps-imps[1])[-1]
       nns = colnames(df)[-1]
@@ -104,20 +105,11 @@ community_BRT_xg = function(XX, YY, E = 3, response = "binomial", correct=FALSE,
       names(fill) = nns[!all_in]
       imps = c(imps, fill)
     }
-    imps = imps[order(names(imps))]
-    A[i, ] = imps[(E+1):length(imps)] - 1/9
+    imps = imps[colnames(XX)]
+    A[i, ] = imps[(E+1):length(imps)] - min(imps)
+    W[i, ] = imps[1:E] - min(imps)
   }
   
-  # spatial importance matrix
-  W = matrix(NA, SP, E)
-  for(i in 1:SP) {
-    imps = xgboost::xgb.importance(model = models[[i]])
-    importances = imps$Gain
-    names(importances) = imps$Feature
-    imps = importances[order(names(importances))]
-    if(correct) imps = (imps-imps[1])[-1]
-    W[i, ] = imps[1:E]
-  }
 
   # species-species association matrix
   preds = do.call(cbind, preds)
@@ -127,7 +119,6 @@ community_BRT_xg = function(XX, YY, E = 3, response = "binomial", correct=FALSE,
   result = list(models = models,
                 A = A,
                 W = W,
-                null = null,
                 Sigma = Sigma,
                 Pred = preds)
   class(result) = c("community_brt_xg")
