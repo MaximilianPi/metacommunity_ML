@@ -19,7 +19,8 @@ community_RF = function(XX, YY, E = 3, impurity = "impurity", response = "binomi
     models[[i]] = ranger(x = x_data, y = YY[,i,drop=FALSE], 
                          importance = impurity, 
                          probability = ifelse(response == "binomial", TRUE, FALSE), 
-                         classification = ifelse(response == "binomial", TRUE, FALSE))
+                         classification = ifelse(response == "binomial", TRUE, FALSE),
+                         num.threads = 2L)
     
     if(response == "binomial") {
       preds[[i]] = predict(models[[i]], data = x_data)$predictions[,1] # return probabilities for class 1

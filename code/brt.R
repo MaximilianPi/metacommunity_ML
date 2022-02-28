@@ -78,7 +78,7 @@ community_BRT_xg = function(XX, YY, E = 3, response = "binomial", correct=FALSE,
     } else {
       df = xgboost::xgb.DMatrix(XX, label = YY[,i,drop=FALSE])
     }
-    models[[i]]  = xgboost::xgboost(df, nrounds = 20, objective = dist, max_depth = 5, early_stopping_rounds = 1)
+    models[[i]]  = xgboost::xgboost(df, nrounds = 20, objective = dist, max_depth = 5, early_stopping_rounds = 1, nthread = 2)
     preds[[i]] = predict(models[[i]], df) # return probabilities for class 1
 
   }

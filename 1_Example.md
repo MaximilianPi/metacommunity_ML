@@ -6,21 +6,14 @@ output:
     toc: true
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-library(sjSDM)
-library(xgboost)
-library(ranger)
-source("code/simulation.R")
-source("code/random_forest.R")
-source("code/brt.R")
-```
+
 
 
 # Example of outputs
 ## Let's try a few different interaction matrices
 
-```{r}
+
+```r
 N = 5
 A1 = diag(0.5,N)
 A2 = matrix(runif(N**2, 0, 0.5), N, N)
@@ -41,9 +34,12 @@ fields::image.plot(A4, main="2x Diagonal-1")
 fields::image.plot(A5, main="Nothing")
 ```
 
+![](1_Example_files/figure-html/unnamed-chunk-1-1.png)<!-- -->
+
 
 ## Example for A4
-```{r}
+
+```r
 data_count = data = simulate(
   scenario ="spatio-temporal", 
   SP = N, 
@@ -66,63 +62,84 @@ binary_prepared = prepare_data(data_binary)
 
 
 ### Counts:
-```{r}
-MAR = sjSDM(count_prepared$Y, count_prepared$X, sampling = 100L, family = poisson())
+
+```r
+MAR = sjSDM(count_prepared$Y, count_prepared$X, sampling = 100L, family = poisson(), device = 0)
 BRT = community_BRT_xg(count_prepared$X, count_prepared$Y, E = nrow(data$W), response = "poisson")
+m = MAR
 ```
 
 Estimated A matrices:
-```{r}
+
+```r
 par(mfrow = c(1, 3))
 fields::image.plot(data$A, main = "True A (interaction)")
 fields::image.plot(t(coef(m)[[1]])[(nrow(data$W)+2):(nrow(t(coef(m)[[1]]))), ], main = "MAR A")
 fields::image.plot(BRT$A, main = "BRT A")
 ```
 
+![](1_Example_files/figure-html/unnamed-chunk-4-1.png)<!-- -->
+
 
 Estimated W matrices:
-```{r}
+
+```r
 par(mfrow = c(1, 3))
 fields::image.plot(abs(data$W), main = "True abs(W) (environment)")
 fields::image.plot(abs(t(coef(m)[[1]])[2:(nrow(data$W)+1), ]), main = "MAR W")
 fields::image.plot(t(BRT$W), main = "BRT W")
 ```
 
+![](1_Example_files/figure-html/unnamed-chunk-5-1.png)<!-- -->
+
 Estimated Association matrices:
-```{r}
+
+```r
 par(mfrow = c(1, 2))
 fields::image.plot(cov2cor(getCov(MAR)), main = "MAR Sigma")
 fields::image.plot(cov2cor(BRT$Sigma), main = "BRT Sigma")
 ```
 
+![](1_Example_files/figure-html/unnamed-chunk-6-1.png)<!-- -->
+
 
 ### 0/1:
-```{r}
+
+```r
 MAR = sjSDM(binary_prepared$Y, binary_prepared$X, sampling = 100L, family = binomial())
 BRT = community_BRT_xg(binary_prepared$X, binary_prepared$Y, E = nrow(data$W), response = "binomial")
 ```
 
 Estimated A matrices:
-```{r}
+
+```r
 par(mfrow = c(1, 3))
 fields::image.plot(data$A, main = "True A (interaction)")
 fields::image.plot(t(coef(m)[[1]])[(nrow(data$W)+2):(nrow(t(coef(m)[[1]]))), ], main = "MAR A")
 fields::image.plot(BRT$A, main = "BRT A")
 ```
 
+![](1_Example_files/figure-html/unnamed-chunk-8-1.png)<!-- -->
+
 
 Estimated W matrices:
-```{r}
+
+```r
 par(mfrow = c(1, 3))
 fields::image.plot(abs(data$W), main = "True abs(W) (environment)")
 fields::image.plot(abs(t(coef(m)[[1]])[2:(nrow(data$W)+1), ]), main = "MAR W")
 fields::image.plot(t(BRT$W), main = "BRT W")
 ```
 
+![](1_Example_files/figure-html/unnamed-chunk-9-1.png)<!-- -->
+
 Estimated Association matrices:
-```{r}
+
+```r
 par(mfrow = c(1, 2))
 fields::image.plot(cov2cor(getCov(MAR)), main = "MAR Sigma")
 fields::image.plot(cov2cor(BRT$Sigma), main = "BRT Sigma")
 ```
+
+![](1_Example_files/figure-html/unnamed-chunk-10-1.png)<!-- -->
 
