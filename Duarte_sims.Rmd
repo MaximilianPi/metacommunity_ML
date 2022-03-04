@@ -1,0 +1,76 @@
+---
+title: "Duarte_sims"
+output: html_document
+---
+
+```{r setup, include=FALSE, cache=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Help function:
+```{r}
+prepare_data = function(XX, YY, lag = 1, scale_d=TRUE, time = 100, sites = 100) {
+  time_steps = time
+  sites = sites
+  lag_indices = (1: (lag*sites) )#+(lag-1)*sites
+  X_corrected = cbind(XX[-lag_indices,], YY[-rev(nrow(YY)-lag_indices+1),])
+  colnames(X_corrected) = c(colnames(XX), paste0(colnames(YY), "_-", lag))
+  YY = YY[-lag_indices,]
+  if(scale_d) X_corrected = scale(X_corrected)
+  X_corrected = cbind(X_corrected[,1:ncol(XX)], apply(X_corrected[,(ncol(XX)+1):ncol(X_corrected)], 2, function(x) (x+min(x))/(max(x+min(x)))))
+  return(list(X = X_corrected, Y = YY))
+}
+
+community_sjSDM = function(X, Y) {
+  m = sjSDM(Y, X, sampling = 100L, family = poisson())
+  A = t(coef(m)[[1]])[(ncol(X)-ncol(Y) + 2):(nrow(t(coef(m)[[1]]))), ]
+  W = t(t(coef(m)[[1]])[1:(ncol(X)-ncol(Y)), ])
+  return(list(A = A, W = W))
+}
+
+```
+
+
+```{r}
+load("sim_data.rdata")
+
+results_BRT = vector("list", 8)
+results_MAR = vector("list", 8)
+for(k in 1:8) {
+    XX = sim.list[[k]]$da[,1:5]
+    YY = sim.list[[k]]$da[,6:29]
+    sp_indices = apply(YY, 2, sum) > 2 ## Remove species with 0 occurrences
+    YY = YY[, sp_indices]
+    data = prepare_data(XX, YY, scale_d = TRUE, lag = 2)
+    BRT = community_BRT_xg(data$X[,-c(1,4)],data$Y, response = "poisson")
+    MAR = community_sjSDM(data$X[,-c(1,4)],as.matrix(data$Y))
+    results_BRT[[k]] = BRT
+    results_MAR[[k]] = MAR
+  }
+```
+
+
+```{r}
+par(mfrow = c(8, 2))
+for(k in 1:8) {
+  YY = sim.list[[k]]$da[,6:29]
+  sp_indices = apply(YY, 2, sum) > 1 ## Remove species with 0 occurrences
+  fields::image.plot(t(results[[k]]$A), breaks = seq(0, 1.0, length.out =16), col = viridis::viridis(15))
+  fields::image.plot(sim.list[[k]]$mat.A[sp_indices, sp_indices], breaks = seq(0, 0.05, length.out = 16), 
+                     col = viridis::viridis(15))
+}
+```
+
+```{r}
+correlation_factors = 
+  t(sapply(1:8, function(k) {
+    YY = sim.list[[k]]$da[,6:29]
+    sp_indices = apply(YY, 2, sum) > 2 ## Remove species with 0 occurrences
+    A_cor = cor(as.vector(t(results[[k]]$A)), as.vector(sim.list[[k]]$mat.A[sp_indices, sp_indices]), method = "spearman")
+    B_cor = cor(as.vector(results[[k]]$W[,3]), as.vector(sim.list[[k]]$sp.niche$optima[sp_indices]), method = "spearman")
+    return(c(A_cor, B_cor))
+  }))
+colnames(correlation_factors) = c("mat.A", "niche.optima")
+flextable::flextable(data.frame(correlation_factors))
+```
+
